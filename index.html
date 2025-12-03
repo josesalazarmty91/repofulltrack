@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-R">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fulltrack - Reportes</title>
-    <!-- Cargar Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         /* Estilo para la barra de scroll (webkit) */
         ::-webkit-scrollbar {
@@ -27,7 +27,6 @@
 </head>
 <body class="bg-gray-100 font-sans">
 
-    <!-- Encabezado principal -->
     <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6 shadow-md">
         <h1 class="text-3xl font-bold">Fulltrack - Reportes</h1>
         <p class="text-blue-100 mt-1">Sistema de consolidación de consumo de diesel de GRUPO AMALGAMA</p>
@@ -35,12 +34,9 @@
 
     <main class="p-4 md:p-8">
         
-        <!-- Contenedor de Pestañas -->
         <div>
-            <!-- Navegación de Pestañas (MODIFICADA) -->
             <div class="border-b border-gray-300">
                 <nav class="-mb-px flex space-x-6" aria-label="Tabs">
-                    <!-- NUEVA PESTAÑA CONSOLIDADO (ACTIVA POR DEFECTO) -->
                     <button id="tab-consolidated" onclick="switchTab('consolidated')" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-blue-600 border-blue-600">
                         Consolidado
                     </button>
@@ -56,7 +52,6 @@
                 </nav>
             </div>
 
-            <!-- NUEVO PANEL CONSOLIDADO (ACTIVO POR DEFECTO) -->
             <div id="panel-consolidated" class="mt-6">
                 <div class="bg-white p-6 rounded-lg shadow-lg">
                     <div class="flex flex-col md:flex-row justify-between md:items-center mb-4">
@@ -64,7 +59,6 @@
                         <p id="consolidated-report-count" class="text-sm text-gray-600">Cargando reportes...</p>
                     </div>
 
-                    <!-- FILTROS (NUEVOS) -->
                     <div class="flex flex-wrap gap-4 mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
                         <div>
                             <label for="filter-month-consolidated" class="block text-sm font-medium text-gray-700">Mes:</label>
@@ -84,23 +78,23 @@
                         </div>
                     </div>
                     
-                    <!-- Contenedor de la tabla con scroll horizontal -->
                     <div class="overflow-x-auto rounded-lg border border-gray-200">
                         <table class="min-w-full divide-y divide-gray-200 text-sm">
-                            <!-- THEAD GIGANTE -->
                             <thead class="bg-gray-100"> 
                                 <tr>
-                                    <!-- Columna 1: Conciliado -->
-                                    <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-gray-800">Conciliado</th>
-                                    
-                                    <!-- Columnas de Reporte Diesel (Naranja) -->
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800 bg-orange-100">ID Diesel</th>
-                                    <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800 bg-orange-100">Unidad (Diesel)</th>
-                                    <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800 bg-orange-100">Fecha (Diesel)</th>
-                                    <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800 bg-orange-100">Hora (Diesel)</th>
+                                    <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-gray-800">Conciliado</th>
+                                    <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800 bg-orange-100">Unidad</th>
+                                    <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-blue-800 bg-blue-100">Operador</th>
+                                    <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800 bg-orange-100">Fecha</th>
+                                    
+                                    <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800 bg-orange-100">Hora</th>
+                                    <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-blue-800 bg-blue-100">Bitácora</th>
+                                    <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800 bg-orange-100">Distancia conducida</th>
+                                    <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-blue-800 bg-blue-100">Litros Diesel</th>
+
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800 bg-orange-200">KM Recorrido</th>
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800 bg-orange-200">Combustible del viaje</th>
-                                    <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800 bg-orange-100">Distancia conducida</th>
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800 bg-orange-100">Distancia en top gear</th>
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800 bg-orange-100">Distancia en cambio bajo</th>
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800 bg-orange-100">Combustible manejando</th>
@@ -125,44 +119,33 @@
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800 bg-orange-100">Combustible PTO</th>
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800 bg-orange-100">Archivo</th>
                                     
-                                    <!-- Columnas de Reporte Tableta (Azul) -->
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-blue-800 bg-blue-100">ID Tableta</th>
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-blue-800 bg-blue-100">Compañía</th>
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-blue-800 bg-blue-100">Unidad (Tableta)</th>
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-blue-800 bg-blue-100">Fecha (Tableta)</th>
-                                    <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-blue-800 bg-blue-100">Operador</th>
-                                    <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-blue-800 bg-blue-100">Bitácora</th>
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-blue-800 bg-blue-100">KM Inicio</th>
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-blue-800 bg-blue-100">KM Fin</th>
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-blue-800 bg-blue-100">KM Recorridos (T)</th>
-                                    <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-blue-800 bg-blue-100">Litros Diesel</th>
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-blue-800 bg-blue-100">Litros Urea</th>
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-blue-800 bg-blue-100">Totalizador</th>
                                 </tr>
                             </thead>
                             <tbody id="consolidatedTableBody" class="divide-y divide-gray-200 bg-white">
-                                <!-- Fila de carga (COLSPAN MODIFICADO) -->
-                                <tr>
-                                    <td colspan="43" class="text-center p-6 text-gray-500">
-                                        Cargando datos...
-                                    </td>
-                                </tr>
+                                <tr><td colspan="43" class="text-center p-6 text-gray-500">Cargando datos...</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            <!-- Panel de Reporte (AHORA OCULTO) -->
             <div id="panel-report" class="hidden mt-6">
                 <div class="bg-white p-6 rounded-lg shadow-lg">
                     
                     <div class="flex flex-col md:flex-row justify-between md:items-center mb-4">
-                        <h2 class="text-2xl font-semibold text-gray-800 mb-2 md:mb-0">Reporte de Viajes Cargados</h2>
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-2 md:mb-0">Reporte de Viajes Cargados (Diesel)</h2>
                         <p id="report-count" class="text-sm text-gray-600">Cargando reportes...</p>
                     </div>
 
-                    <!-- FILTROS (MODIFICADOS) -->
                     <div class="flex flex-wrap gap-4 mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
                         <div>
                             <label for="filter-month-report" class="block text-sm font-medium text-gray-700">Mes:</label>
@@ -179,39 +162,33 @@
                             <button id="btn-clear-report" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition duration-300">
                                 Limpiar
                             </button>
+                            <button onclick="downloadXLS('diesel')" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition duration-300 flex items-center gap-2">
+                                <span class="text-lg">⤓</span> XLS
+                            </button>
                         </div>
                     </div>
                     
-                    <!-- KPIs -->
                     <div class="flex flex-wrap gap-4 mb-4">
-                        <!-- KPI 1: Total KM -->
                         <div class="bg-gray-50 p-3 rounded-lg text-center shadow-sm border border-gray-200">
                             <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">KM Totales</h4>
                             <p id="kpi-total-km" class="text-xl font-bold text-blue-700">0</p>
                         </div>
-                        <!-- KPI 2: Total Combustible -->
                         <div class="bg-gray-50 p-3 rounded-lg text-center shadow-sm border border-gray-200">
                             <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Combustible Total</h4>
                             <p id="kpi-total-fuel" class="text-xl font-bold text-blue-700">0 L</p>
                         </div>
                     </div>
 
-                    <!-- Contenedor de la tabla con scroll horizontal -->
                     <div class="overflow-x-auto rounded-lg border border-gray-200">
                         <table class="min-w-full divide-y divide-gray-200 text-sm">
                             <thead class="bg-orange-100">
                                 <tr>
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800">ID</th>
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800">Número de Unidad</th>
-                                    
-                                    <!-- CAMBIO: Añadido ID, clases de cursor y span para la flecha -->
                                     <th id="th-fecha-report" class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800 cursor-pointer hover:bg-orange-200 transition-colors">
                                         Fecha <span id="sort-arrow-report"></span>
                                     </th>
-                                    
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800">Hora</th>
-                                    
-                                    <!-- COLUMNAS AGRUPADAS Y CON FONDO -->
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800 bg-orange-200">KM Recorrido</th>
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-orange-800 bg-orange-200">Combustible del viaje</th>
                                     
@@ -242,19 +219,13 @@
                                 </tr>
                             </thead>
                             <tbody id="reportTableBody" class="divide-y divide-gray-200 bg-white">
-                                <!-- Fila de carga -->
-                                <tr>
-                                    <td colspan="30" class="text-center p-6 text-gray-500">
-                                        Cargando datos...
-                                    </td>
-                                </tr>
+                                <tr><td colspan="30" class="text-center p-6 text-gray-500">Cargando datos...</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            <!-- PANEL DE TABLETA (AHORA OCULTO) -->
             <div id="panel-tablet" class="hidden mt-6">
                 <div class="bg-white p-6 rounded-lg shadow-lg">
                     <div class="flex flex-col md:flex-row justify-between md:items-center mb-4">
@@ -262,7 +233,6 @@
                         <p id="tablet-report-count" class="text-sm text-gray-600">Cargando reportes de tableta...</p>
                     </div>
 
-                    <!-- FILTROS (NUEVOS) -->
                     <div class="flex flex-wrap gap-4 mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
                         <div>
                             <label for="filter-month-tablet" class="block text-sm font-medium text-gray-700">Mes:</label>
@@ -279,13 +249,14 @@
                             <button id="btn-clear-tablet" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition duration-300">
                                 Limpiar
                             </button>
+                            <button onclick="downloadXLS('tablet')" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition duration-300 flex items-center gap-2">
+                                <span class="text-lg">⤓</span> XLS
+                            </button>
                         </div>
                     </div>
                     
-                    <!-- Contenedor de la tabla con scroll horizontal -->
                     <div class="overflow-x-auto rounded-lg border border-gray-200">
                         <table class="min-w-full divide-y divide-gray-200 text-sm">
-                            <!-- THEAD MODIFICADO -->
                             <thead class="bg-blue-100"> 
                                 <tr>
                                     <th class="whitespace-nowrap px-4 py-3 text-left font-semibold text-blue-800">ID</th>
@@ -303,24 +274,16 @@
                                 </tr>
                             </thead>
                             <tbody id="tabletTableBody" class="divide-y divide-gray-200 bg-white">
-                                <!-- Fila de carga (COLSPAN MODIFICADO) -->
-                                <tr>
-                                    <td colspan="12" class="text-center p-6 text-gray-500">
-                                        Cargando datos...
-                                    </td>
-                                </tr>
+                                <tr><td colspan="12" class="text-center p-6 text-gray-500">Cargando datos...</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            <!-- Panel de Carga (Oculto por defecto) -->
             <div id="panel-upload" class="hidden mt-6">
-                <!-- ... (contenido existente del panel de carga) ... -->
                 <div class="bg-white p-6 rounded-lg shadow-lg max-w-lg mx-auto">
                     <h2 class="text-2xl font-semibold text-gray-800 mb-4">Cargar Nuevo Reporte</h2>
-                    
                     <form id="uploadForm" enctype="multipart/form-data">
                         <div class="mb-4">
                             <label for="file-upload" class="block text-sm font-medium text-gray-700 mb-2">Seleccionar archivo XML:</label>
@@ -332,54 +295,92 @@
                                 hover:file:bg-blue-100
                                 cursor-pointer" required>
                         </div>
-                        
                         <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
                             Subir y Procesar Archivo
                         </button>
                     </form>
-
-                    <!-- Área de Mensajes y Progreso -->
-                    <div id="upload-status" class="mt-4 text-center">
-                        <!-- Mensajes de éxito o error aparecerán aquí -->
-                    </div>
+                    <div id="upload-status" class="mt-4 text-center"></div>
                 </div>
             </div>
         </div>
     </main>
 
     <script>
-        // --- LÓGICA DE PESTAÑAS (MODIFICADA) ---
+        // Variables globales para almacenar los datos (caché para descargas)
+        window.cachedDieselReports = [];
+        window.cachedTabletReports = [];
+
+        // --- LÓGICA DE PESTAÑAS ---
         const tabButtons = {
-            consolidated: document.getElementById('tab-consolidated'), // NUEVO
+            consolidated: document.getElementById('tab-consolidated'),
             report: document.getElementById('tab-report'),
             tablet: document.getElementById('tab-tablet'),
             upload: document.getElementById('tab-upload')
         };
         const tabPanels = {
-            consolidated: document.getElementById('panel-consolidated'), // NUEVO
+            consolidated: document.getElementById('panel-consolidated'),
             report: document.getElementById('panel-report'),
             tablet: document.getElementById('panel-tablet'),
             upload: document.getElementById('panel-upload')
         };
 
         function switchTab(tabId) {
-            // Ocultar todos los paneles
             Object.values(tabPanels).forEach(panel => panel.classList.add('hidden'));
-            
-            // Desactivar todos los botones
             Object.values(tabButtons).forEach(button => {
                 button.classList.remove('text-blue-600', 'border-blue-600');
                 button.classList.add('text-gray-500', 'border-transparent', 'hover:text-gray-700', 'hover:border-gray-300');
             });
-
-            // Activar el botón y panel seleccionados
             tabPanels[tabId].classList.remove('hidden');
             tabButtons[tabId].classList.add('text-blue-600', 'border-blue-600');
             tabButtons[tabId].classList.remove('text-gray-500', 'border-transparent', 'hover:text-gray-700', 'hover:border-gray-300');
         }
 
-        // --- LÓGICA DE CARGA DE DATOS (REPORTE DIESEL) ---
-// ... (Toda la lógica de Reporte Diesel se queda igual) ...
+        // --- FUNCIÓN DE DESCARGA EXCEL ---
+        function downloadXLS(type) {
+            let data = [];
+            let fileName = "";
+            let headers = {};
+
+            if (type === 'diesel') {
+                data = window.cachedDieselReports;
+                fileName = "Reporte_Diesel_" + new Date().toISOString().slice(0,10) + ".xlsx";
+                headers = {
+                    id: "ID", unit_number: "Unidad", report_date: "Fecha", report_time: "Hora",
+                    km_recorrido: "KM Recorrido", combustible_viaje: "Combustible Viaje", rendimiento_viaje: "Rendimiento",
+                    file_name: "Archivo Origen", velocidad_promedio: "Velocidad Promedio", tiempo_manejando: "Tiempo Manejando"
+                };
+            } else if (type === 'tablet') {
+                data = window.cachedTabletReports;
+                fileName = "Reporte_Tableta_" + new Date().toISOString().slice(0,10) + ".xlsx";
+                headers = {
+                    id: "ID", company_name: "Compañía", unit_number: "Unidad", timestamp: "Fecha/Hora",
+                    operator_name: "Operador", bitacora_number: "Bitácora", km_inicio: "KM Inicio",
+                    km_fin: "KM Fin", km_recorridos: "KM Recorridos", litros_diesel: "Litros Diesel",
+                    litros_urea: "Litros Urea", litros_totalizador: "Totalizador"
+                };
+            }
+
+            if (!data || data.length === 0) {
+                alert("No hay datos para descargar.");
+                return;
+            }
+
+            const cleanData = data.map(item => {
+                const newItem = {};
+                for (const key in item) {
+                    const label = headers[key] || key;
+                    newItem[label] = item[key];
+                }
+                return newItem;
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(cleanData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte");
+            XLSX.writeFile(workbook, fileName);
+        }
+
+        // --- REPORTE DIESEL ---
         const tableBody = document.getElementById('reportTableBody');
         const reportCountEl = document.getElementById('report-count');
         const kpiTotalKm = document.getElementById('kpi-total-km');
@@ -393,20 +394,30 @@
         let reportDateSort = 'DESC'; 
 
         function updateSortArrow() {
-            if (reportDateSort === 'ASC') {
-                sortArrowReport.innerHTML = ' &uarr;';
-            } else if (reportDateSort === 'DESC') {
-                sortArrowReport.innerHTML = ' &darr;';
-            } else {
-                sortArrowReport.innerHTML = '';
-            }
+            sortArrowReport.innerHTML = (reportDateSort === 'ASC') ? ' &uarr;' : (reportDateSort === 'DESC') ? ' &darr;' : '';
         }
 
         function addReportRow(report) {
             const row = tableBody.insertRow();
             row.className = 'hover:bg-gray-50';
+            
+            // LÓGICA PARA UNIDAD PENDIENTE
+            let unitHtml = report.unit_number;
+            if (report.unit_number === 'PENDIENTE' || report.unit_number === 'N/D') {
+                unitHtml = `
+                    <div class="flex items-center gap-2">
+                        <span class="text-red-600 font-bold">PENDIENTE</span>
+                        <button onclick="editUnit(${report.id})" class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded text-xs border border-blue-300 transition">
+                            ✎ Editar
+                        </button>
+                    </div>
+                `;
+            }
+
             const columns = [
-                report.id, report.unit_number, report.report_date, report.report_time,
+                report.id, 
+                unitHtml, // Contenido especial con botón
+                report.report_date, report.report_time,
                 report.km_recorrido, report.combustible_viaje, report.distancia_conducida,
                 report.distancia_top_gear, report.distancia_cambio_bajo, report.combustible_manejando,
                 report.combustible_ralenti, report.def_usado, report.tiempo_viaje, report.tiempo_manejando,
@@ -416,17 +427,20 @@
                 report.factor_carga, report.eventos_exceso_velocidad, report.eventos_frenado,
                 report.tiempo_neutro_coasting, report.tiempo_pto, report.combustible_pto, report.file_name
             ];
-            columns.forEach((text, index) => {
+            
+            columns.forEach((content, index) => {
                 const cell = row.insertCell();
-                let value = text || 'N/D';
+                if (index === 1) {
+                    // Para la columna de unidad, usamos innerHTML para renderizar el botón
+                    cell.innerHTML = content;
+                } else {
+                    let value = content || 'N/D';
+                    if (index === 23 && value !== 'N/D' && !isNaN(parseFloat(value))) value = `${value}%`;
+                    cell.textContent = value;
+                }
+                
                 cell.className = 'px-4 py-3 whitespace-nowrap text-gray-700';
-                if (index === 23 && value !== 'N/D' && !isNaN(parseFloat(value))) { 
-                    value = `${value}%`;
-                }
-                if (index === 4 || index === 5) {
-                    cell.className = 'px-4 py-3 whitespace-nowrap text-gray-700 bg-orange-50 font-medium text-orange-900';
-                }
-                cell.textContent = value;
+                if (index === 4 || index === 5) cell.className += ' bg-orange-50 font-medium text-orange-900';
             });
         }
 
@@ -441,10 +455,11 @@
                 queryParams.append('sort_dir', sortDir);
                 queryParams.append('t', new Date().getTime());
                 const response = await fetch(`fetch_reports.php?${queryParams.toString()}`);
-                if (!response.ok) {
-                    throw new Error('Error en la respuesta del servidor (fetch_reports).');
-                }
+                if (!response.ok) throw new Error('Error en fetch_reports.');
+                
                 const reports = await response.json();
+                window.cachedDieselReports = reports; 
+
                 tableBody.innerHTML = ''; 
                 let totalKm = 0;
                 let totalFuel = 0;
@@ -458,21 +473,18 @@
                     kpiTotalKm.textContent = totalKm.toLocaleString('es-MX', { maximumFractionDigits: 0 });
                     kpiTotalFuel.textContent = totalFuel.toLocaleString('es-MX', { maximumFractionDigits: 2 }) + ' L';
                 } else {
-                    tableBody.innerHTML = `<tr><td colspan="30" class="text-center p-6 text-gray-500">No se encontraron reportes con los filtros aplicados.</td></tr>`;
+                    tableBody.innerHTML = `<tr><td colspan="30" class="text-center p-6 text-gray-500">No se encontraron reportes.</td></tr>`;
                     reportCountEl.textContent = 'Mostrando 0 reportes.';
                     kpiTotalKm.textContent = '0';
                     kpiTotalFuel.textContent = '0 L';
                 }
             } catch (error) {
-                console.error('Error al cargar reportes (Diesel):', error);
-                tableBody.innerHTML = `<tr><td colspan="30" class="text-center p-6 text-red-500">Error al cargar los reportes. Revise la conexión y el archivo 'fetch_reports.php'.</td></tr>`;
-                reportCountEl.textContent = 'Error al cargar reportes.';
+                console.error(error);
+                tableBody.innerHTML = `<tr><td colspan="30" class="text-center p-6 text-red-500">Error al cargar reportes.</td></tr>`;
             }
         }
 
-
-        // --- LÓGICA DE CARGA (REPORTE TABLETA) ---
-// ... (Toda la lógica de Reporte Tableta se queda igual) ...
+        // --- REPORTE TABLETA ---
         const tabletTableBody = document.getElementById('tabletTableBody');
         const tabletReportCountEl = document.getElementById('tablet-report-count');
         const filterMonthTablet = document.getElementById('filter-month-tablet');
@@ -504,28 +516,26 @@
                 if (unit) queryParams.append('unit', unit);
                 queryParams.append('t', new Date().getTime());
                 const response = await fetch(`fetch_tablet_reports.php?${queryParams.toString()}`);
-                if (!response.ok) {
-                    throw new Error('Error en la respuesta del servidor (fetch_tablet_reports).');
-                }
+                if (!response.ok) throw new Error('Error en fetch_tablet_reports.');
+                
                 const reports = await response.json();
+                window.cachedTabletReports = reports;
+
                 tabletTableBody.innerHTML = ''; 
                 if (reports.length > 0) {
                     reports.forEach(addTabletReportRow);
                     tabletReportCountEl.textContent = `Mostrando ${reports.length} reportes.`;
                 } else {
-                    tabletTableBody.innerHTML = `<tr><td colspan="12" class="text-center p-6 text-gray-500">No se encontraron reportes con los filtros aplicados.</td></tr>`;
+                    tabletTableBody.innerHTML = `<tr><td colspan="12" class="text-center p-6 text-gray-500">No se encontraron reportes.</td></tr>`;
                     tabletReportCountEl.textContent = 'Mostrando 0 reportes.';
                 }
             } catch (error) {
-                console.error('Error al cargar reportes (Tableta):', error);
-                tabletTableBody.innerHTML = `<tr><td colspan="12" class="text-center p-6 text-red-500">Error al cargar los reportes. Revise la conexión y el archivo 'fetch_tablet_reports.php'.</td></tr>`;
-                tabletReportCountEl.textContent = 'Error al cargar reportes.';
+                console.error(error);
+                tabletTableBody.innerHTML = `<tr><td colspan="12" class="text-center p-6 text-red-500">Error al cargar reportes.</td></tr>`;
             }
         }
 
-
-        // --- NUEVA LÓGICA DE CARGA (REPORTE CONSOLIDADO) ---
-
+        // --- CONSOLIDADO: LÓGICA DE FILAS ACTUALIZADA ---
         const consolidatedTableBody = document.getElementById('consolidatedTableBody');
         const consolidatedReportCountEl = document.getElementById('consolidated-report-count');
         const filterMonthConsolidated = document.getElementById('filter-month-consolidated');
@@ -537,20 +547,58 @@
             const row = consolidatedTableBody.insertRow();
             row.className = 'hover:bg-gray-50';
 
-            // 1. Columna de Conciliación
-            const cellConciliado = row.insertCell();
-            if (report.conciliado == 1) {
-                cellConciliado.innerHTML = '<span class="font-bold text-green-600">&#10004;</span>'; // Check
-                cellConciliado.className = 'px-4 py-3 whitespace-nowrap text-center';
-            } else {
-                cellConciliado.innerHTML = '<span class="font-bold text-red-600">&#10006;</span>'; // Cross
-                cellConciliado.className = 'px-4 py-3 whitespace-nowrap text-center';
-            }
+            // 1. ID Diesel (t1_id)
+            const cellId = row.insertCell();
+            cellId.textContent = report.t1_id || 'N/D';
+            cellId.className = 'px-4 py-3 whitespace-nowrap text-orange-800 bg-orange-100 font-medium';
 
-            // 2. Columnas de Reporte Diesel (t1)
-            const dieselColumns = [
-                report.t1_id, report.unit_number, report.t1_report_date, report.t1_report_time,
-                report.km_recorrido, report.combustible_viaje, report.distancia_conducida,
+            // 2. Conciliado
+            const cellConciliado = row.insertCell();
+            cellConciliado.innerHTML = (report.conciliado == 1) 
+                ? '<span class="font-bold text-green-600">&#10004;</span>' 
+                : '<span class="font-bold text-red-600">&#10006;</span>';
+            cellConciliado.className = 'px-4 py-3 whitespace-nowrap text-center';
+
+            // 3. Unidad Diesel
+            const cellUnit = row.insertCell();
+            cellUnit.textContent = report.unit_number || 'N/D';
+            cellUnit.className = 'px-4 py-3 whitespace-nowrap text-gray-700 bg-orange-100 font-bold';
+
+            // 4. Operador (Tableta)
+            const cellOp = row.insertCell();
+            cellOp.textContent = report.t2_operator_name || 'N/D';
+            cellOp.className = 'px-4 py-3 whitespace-nowrap text-blue-800 bg-blue-100 font-medium';
+
+            // 5. Fecha (Diesel)
+            const cellDate = row.insertCell();
+            cellDate.textContent = report.t1_report_date || 'N/D';
+            cellDate.className = 'px-4 py-3 whitespace-nowrap text-gray-700 bg-orange-100';
+
+            // 6. Hora (Diesel) - NUEVA POSICIÓN
+            const cellTime = row.insertCell();
+            cellTime.textContent = report.t1_report_time || 'N/D';
+            cellTime.className = 'px-4 py-3 whitespace-nowrap text-gray-700 bg-orange-100';
+
+            // 7. Bitácora (Tableta) - NUEVA POSICIÓN
+            const cellBit = row.insertCell();
+            cellBit.textContent = report.bitacora_number || 'N/D';
+            cellBit.className = 'px-4 py-3 whitespace-nowrap text-blue-800 bg-blue-100 font-medium';
+
+            // 8. Distancia Conducida (Diesel) - NUEVA POSICIÓN
+            const cellDist = row.insertCell();
+            cellDist.textContent = report.distancia_conducida || 'N/D';
+            cellDist.className = 'px-4 py-3 whitespace-nowrap text-gray-700 bg-orange-100';
+
+            // 9. Litros Diesel (Tableta) - NUEVA POSICIÓN
+            const cellLit = row.insertCell();
+            cellLit.textContent = report.litros_diesel || 'N/D';
+            cellLit.className = 'px-4 py-3 whitespace-nowrap text-blue-800 bg-blue-100 font-medium';
+
+            // --- RESTO DE COLUMNAS DIESEL (Excluyendo las ya puestas) ---
+            const remainingDiesel = [
+                // t1_report_time (YA PUESTO)
+                report.km_recorrido, report.combustible_viaje, 
+                // distancia_conducida (YA PUESTO)
                 report.distancia_top_gear, report.distancia_cambio_bajo, report.combustible_manejando,
                 report.combustible_ralenti, report.def_usado, report.tiempo_viaje, report.tiempo_manejando,
                 report.tiempo_ralenti, report.tiempo_top_gear, report.tiempo_crucero,
@@ -559,25 +607,25 @@
                 report.factor_carga, report.eventos_exceso_velocidad, report.eventos_frenado,
                 report.tiempo_neutro_coasting, report.tiempo_pto, report.combustible_pto, report.file_name
             ];
-            dieselColumns.forEach((text, index) => {
+            
+            remainingDiesel.forEach((text, index) => {
                 const cell = row.insertCell();
                 cell.textContent = text || 'N/D';
                 cell.className = 'px-4 py-3 whitespace-nowrap text-gray-700 bg-orange-50';
-                // Resaltar las celdas de KPI
-                if (index === 4 || index === 5) {
-                    cell.className = 'px-4 py-3 whitespace-nowrap text-gray-700 bg-orange-100 font-medium text-orange-900';
-                }
             });
 
-            // 3. Columnas de Reporte Tableta (t2)
-            const tabletColumns = [
+            // --- RESTO DE COLUMNAS TABLETA (Excluyendo las ya puestas) ---
+            const remainingTablet = [
                 report.t2_id, report.t2_company_name, report.t2_unit_number, report.t2_timestamp,
-                report.t2_operator_name, report.bitacora_number, report.km_inicio, report.km_fin,
-                report.km_recorridos, report.litros_diesel, report.litros_urea, report.litros_totalizador
+                // Operador (YA PUESTO), Bitacora (YA PUESTO)
+                report.km_inicio, report.km_fin,
+                report.km_recorridos, 
+                // litros_diesel (YA PUESTO)
+                report.litros_urea, report.litros_totalizador
             ];
-            tabletColumns.forEach(text => {
+
+            remainingTablet.forEach(text => {
                 const cell = row.insertCell();
-                // Si no está conciliado, el PHP enviará N/D, pero por si acaso, verificamos con '||'
                 cell.textContent = text || 'N/D';
                 cell.className = 'px-4 py-3 whitespace-nowrap text-gray-700 bg-blue-50';
             });
@@ -592,27 +640,23 @@
                 if (unit) queryParams.append('unit', unit);
                 queryParams.append('t', new Date().getTime());
                 const response = await fetch(`fetch_consolidated_reports.php?${queryParams.toString()}`);
-                if (!response.ok) {
-                    throw new Error('Error en la respuesta del servidor (fetch_consolidated_reports).');
-                }
+                if (!response.ok) throw new Error('Error en fetch_consolidated_reports.');
                 const reports = await response.json();
                 consolidatedTableBody.innerHTML = ''; 
                 if (reports.length > 0) {
                     reports.forEach(addConsolidatedRow);
                     consolidatedReportCountEl.textContent = `Mostrando ${reports.length} registros (basados en Reporte Diesel).`;
                 } else {
-                    consolidatedTableBody.innerHTML = `<tr><td colspan="43" class="text-center p-6 text-gray-500">No se encontraron reportes con los filtros aplicados.</td></tr>`;
+                    consolidatedTableBody.innerHTML = `<tr><td colspan="43" class="text-center p-6 text-gray-500">No se encontraron reportes.</td></tr>`;
                     consolidatedReportCountEl.textContent = 'Mostrando 0 reportes.';
                 }
             } catch (error) {
-                console.error('Error al cargar reportes (Consolidado):', error);
-                consolidatedTableBody.innerHTML = `<tr><td colspan="43" class="text-center p-6 text-red-500">Error al cargar los reportes. Revise la conexión y el archivo 'fetch_consolidated_reports.php'.</td></tr>`;
-                consolidatedReportCountEl.textContent = 'Error al cargar reportes.';
+                console.error(error);
+                consolidatedTableBody.innerHTML = `<tr><td colspan="43" class="text-center p-6 text-red-500">Error al cargar reportes.</td></tr>`;
             }
         }
 
-        // --- LÓGICA DE SUBIDA DE ARCHIVOS ---
-// ... (La lógica de Subida se queda igual) ...
+        // --- SUBIDA DE ARCHIVOS ---
         const uploadForm = document.getElementById('uploadForm');
         const uploadStatus = document.getElementById('upload-status');
         const fileInput = document.getElementById('file-upload');
@@ -629,27 +673,22 @@
             submitButton.textContent = 'Procesando...';
             showStatus('Procesando archivo...', 'loading');
             try {
-                const response = await fetch('upload.php', {
-                    method: 'POST',
-                    body: formData
-                });
+                const response = await fetch('upload.php', { method: 'POST', body: formData });
                 const result = await response.json();
                 if (result.status === 'success') {
                     showStatus(result.message, 'success');
                     fileInput.value = ''; 
-                    // RECARGAR TODOS LOS PANELES y cambiar a la pestaña de CONSOLIDADO
                     const currentMonth = filterMonthConsolidated.value;
                     const currentUnit = filterUnitConsolidated.value;
-                    await fetchConsolidatedReports(currentMonth, currentUnit); // Recargar consolidado
-                    await fetchReports(currentMonth, currentUnit, reportDateSort); // Recargar diesel
-                    await fetchTabletReports(currentMonth, filterUnitTablet.value); // Recargar tableta
-                    
-                    switchTab('consolidated'); // Cambiar a la pestaña consolidada
+                    await fetchConsolidatedReports(currentMonth, currentUnit); 
+                    await fetchReports(currentMonth, currentUnit, reportDateSort); 
+                    await fetchTabletReports(currentMonth, filterUnitTablet.value); 
+                    switchTab('consolidated'); 
                 } else {
                     showStatus(result.message, 'error');
                 }
             } catch (error) {
-                console.error('Error al subir:', error);
+                console.error(error);
                 showStatus('Error de conexión al subir el archivo.', 'error');
             } finally {
                 submitButton.disabled = false;
@@ -661,82 +700,66 @@
             uploadStatus.innerHTML = '';
             const p = document.createElement('p');
             p.textContent = message;
-            if (type === 'success') {
-                p.className = 'text-green-600';
-            } else if (type === 'error') {
-                p.className = 'text-red-600';
-            } else {
-                p.className = 'text-blue-600';
-            }
+            p.className = (type === 'success') ? 'text-green-600' : (type === 'error') ? 'text-red-600' : 'text-blue-600';
             uploadStatus.appendChild(p);
         }
 
-        // --- EVENT LISTENERS ---
+        // --- FUNCIÓN DE EDICIÓN DE UNIDAD (NUEVO) ---
+        async function editUnit(reportId) {
+            const newUnit = prompt("Ingrese el número de unidad correcto (ej. 105):");
+            
+            if (newUnit && newUnit.trim() !== "") {
+                try {
+                    const response = await fetch('update_unit.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: reportId, unit: newUnit.trim() })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.status === 'success') {
+                        alert("¡Unidad actualizada!");
+                        // Recargar las tablas para reflejar cambios
+                        fetchReports(filterMonthReport.value, filterUnitReport.value, reportDateSort);
+                        fetchConsolidatedReports(filterMonthConsolidated.value, filterUnitConsolidated.value);
+                    } else {
+                        alert("Error: " + result.message);
+                    }
+                } catch (error) {
+                    console.error(error);
+                    alert("Error de conexión al intentar actualizar.");
+                }
+            }
+        }
 
-        // Carga inicial de datos (MODIFICADO PARA CARGAR MES ACTUAL Y CONSOLIDADO PRIMERO)
+        // --- INICIALIZACIÓN ---
         document.addEventListener('DOMContentLoaded', () => {
             const now = new Date();
-            const year = now.getFullYear();
             const month = (now.getMonth() + 1).toString().padStart(2, '0');
-            const currentMonth = `${year}-${month}`; // Formato YYYY-MM
+            const currentMonth = `${now.getFullYear()}-${month}`;
 
-            // Poner el mes actual en TODOS los inputs de filtro
             filterMonthConsolidated.value = currentMonth;
             filterMonthReport.value = currentMonth;
             filterMonthTablet.value = currentMonth;
 
-            // Cargar TODOS los reportes usando el mes actual por defecto
-            // Empezar por el consolidado (que es la pestaña activa)
             fetchConsolidatedReports(currentMonth, filterUnitConsolidated.value);
-            
-            // Cargar los otros en segundo plano
             fetchReports(currentMonth, filterUnitReport.value, reportDateSort); 
             updateSortArrow(); 
             fetchTabletReports(currentMonth, filterUnitTablet.value);
         });
 
-        // Listeners para filtros de Reporte Consolidado (NUEVO)
-        btnFilterConsolidated.addEventListener('click', () => {
-            fetchConsolidatedReports(filterMonthConsolidated.value, filterUnitConsolidated.value);
-        });
+        // Listeners
+        btnFilterConsolidated.addEventListener('click', () => fetchConsolidatedReports(filterMonthConsolidated.value, filterUnitConsolidated.value));
+        btnClearConsolidated.addEventListener('click', () => { filterMonthConsolidated.value = ''; filterUnitConsolidated.value = ''; fetchConsolidatedReports(); });
 
-        btnClearConsolidated.addEventListener('click', () => {
-            filterMonthConsolidated.value = '';
-            filterUnitConsolidated.value = '';
-            fetchConsolidatedReports(); // Cargar todo
-        });
+        btnFilterReport.addEventListener('click', () => fetchReports(filterMonthReport.value, filterUnitReport.value, reportDateSort));
+        btnClearReport.addEventListener('click', () => { filterMonthReport.value = ''; filterUnitReport.value = ''; reportDateSort = 'DESC'; updateSortArrow(); fetchReports(filterMonthReport.value, filterUnitReport.value, reportDateSort); });
+        thFechaReport.addEventListener('click', () => { reportDateSort = (reportDateSort === 'ASC') ? 'DESC' : 'ASC'; updateSortArrow(); fetchReports(filterMonthReport.value, filterUnitReport.value, reportDateSort); });
 
-        // Listeners para filtros de Reporte Diesel
-        btnFilterReport.addEventListener('click', () => {
-            fetchReports(filterMonthReport.value, filterUnitReport.value, reportDateSort);
-        });
-
-        btnClearReport.addEventListener('click', () => {
-            filterMonthReport.value = '';
-            filterUnitReport.value = '';
-            reportDateSort = 'DESC'; 
-            updateSortArrow(); 
-            fetchReports(filterMonthReport.value, filterUnitReport.value, reportDateSort);
-        });
-
-        thFechaReport.addEventListener('click', () => {
-            reportDateSort = (reportDateSort === 'ASC') ? 'DESC' : 'ASC';
-            updateSortArrow(); 
-            fetchReports(filterMonthReport.value, filterUnitReport.value, reportDateSort);
-        });
-
-        // Listeners para filtros de Reporte Tableta
-        btnFilterTablet.addEventListener('click', () => {
-            fetchTabletReports(filterMonthTablet.value, filterUnitTablet.value);
-        });
-
-        btnClearTablet.addEventListener('click', () => {
-            filterMonthTablet.value = '';
-            filterUnitTablet.value = '';
-            fetchTabletReports();
-        });
+        btnFilterTablet.addEventListener('click', () => fetchTabletReports(filterMonthTablet.value, filterUnitTablet.value));
+        btnClearTablet.addEventListener('click', () => { filterMonthTablet.value = ''; filterUnitTablet.value = ''; fetchTabletReports(); });
 
     </script>
-
 </body>
 </html>

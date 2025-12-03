@@ -10,10 +10,6 @@ $response = [];
 /**
  * Parsea una cadena de fecha/hora dado un formato de entrada específico.
  * Devuelve un array con la fecha (formato m/d/Y para BD) y la hora (formato H:i:s).
- *
- * @param string $dateString La cadena de fecha/hora (ej. "13/11/2025 02:10:39 p. m.")
- * @param string $inputFormat El formato PHP de la cadena (ej. 'd/m/Y h:i:s A')
- * @return array ['date' => 'm/d/Y', 'time' => 'H:i:s']
  */
 function parseAndFormatDateTime($dateString, $inputFormat) {
     $date = 'N/D';
@@ -22,28 +18,23 @@ function parseAndFormatDateTime($dateString, $inputFormat) {
     // 1. Limpiar espacios y normalizar AM/PM
     $dateString = trim($dateString);
     $dateString = preg_replace('/\s+/', ' ', $dateString);
-    // Reemplazar 'p. m.' y 'a. m.' (con puntos) por 'PM' y 'AM'
     $dateStringAmPm = str_replace(['a. m.', 'p. m.'], ['AM', 'PM'], $dateString);
 
-    // 2. Determinar qué cadena usar (la que tiene AM/PM o la normal)
-    // Si el formato de entrada espera 'A' (AM/PM), usamos la cadena normalizada.
+    // 2. Determinar qué cadena usar
     $stringToParse = (strpos($inputFormat, 'A') !== false) ? $dateStringAmPm : $dateString;
 
-    // 3. Crear el objeto DateTime desde el formato de ENTRADA específico
+    // 3. Crear el objeto DateTime
     $dateTime = DateTime::createFromFormat($inputFormat, $stringToParse);
     
-    // 4. Si el parseo falló, intentar un formato alternativo (ej. 24h vs 12h)
-    // Esto da flexibilidad si un archivo Detroit usa AM/PM o un Cummins usa 24h
+    // 4. Intentar formato alternativo si falla
     if ($dateTime === false) {
         $altFormat = '';
         if (strpos($inputFormat, 'h:i:s A') !== false) {
-            // Era 12h, intentar 24h
             $altFormat = str_replace('h:i:s A', 'H:i:s', $inputFormat);
-            $stringToParse = $dateString; // Usar la cadena original
+            $stringToParse = $dateString; 
         } elseif (strpos($inputFormat, 'H:i:s') !== false) {
-            // Era 24h, intentar 12h
             $altFormat = str_replace('H:i:s', 'h:i:s A', $inputFormat);
-            $stringToParse = $dateStringAmPm; // Usar la cadena AM/PM
+            $stringToParse = $dateStringAmPm; 
         }
         
         if ($altFormat) {
@@ -52,11 +43,9 @@ function parseAndFormatDateTime($dateString, $inputFormat) {
     }
 
     if ($dateTime) {
-        // 5. ÉXITO: Formatear para la BD
-        // Guardar SIEMPRE en formato Americano (m/d/Y)
-        // Esto es CRÍTICO para que fetch_reports.php funcione.
+        // 5. ÉXITO: Formatear para la BD (m/d/Y para compatibilidad)
         $date = $dateTime->format('m/d/Y'); 
-        $time = $dateTime->format('H:i:s'); // Guardar siempre en 24h
+        $time = $dateTime->format('H:i:s'); 
     }
     
     return ['date' => $date, 'time' => $time];
@@ -66,20 +55,16 @@ function parseAndFormatDateTime($dateString, $inputFormat) {
 
 try {
     // --- 1. CONFIGURACIÓN Y CONEXIÓN A BD ---
-
-    // Usar __DIR__ para asegurar que la ruta al config es correcta
-    // Asume que db_config.php está EN LA MISMA CARPETA que este archivo.
     $configFile = __DIR__ . '/db_config.php';
 
     if (!file_exists($configFile) || !is_readable($configFile)) {
-        throw new Exception("El archivo 'db_config.php' no existe, no se pudo leer o no está configurado.", 1);
+        throw new Exception("El archivo 'db_config.php' no existe o no se pudo leer.", 1);
     }
     
     require $configFile;
 
-    // Verificar que las variables de configuración realmente se cargaron
     if (!isset($DB_HOST) || !isset($DB_USER) || !isset($DB_PASS) || !isset($DB_NAME)) {
-        throw new Exception("Las variables de configuración de la base de datos no están definidas en db_config.php.", 2);
+        throw new Exception("Variables de configuración BD no definidas.", 2);
     }
 
     $conn = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME);
@@ -89,7 +74,6 @@ try {
     $conn->set_charset('utf8mb4');
 
     // --- 2. VALIDACIÓN DEL ARCHIVO SUBIDO ---
-
     if (!isset($_FILES['xmlFile']) || $_FILES['xmlFile']['error'] !== UPLOAD_ERR_OK) {
         throw new Exception('Error al subir el archivo. Código: ' . $_FILES['xmlFile']['error']);
     }
@@ -97,28 +81,24 @@ try {
     $xmlFilePath = $_FILES['xmlFile']['tmp_name'];
     $fileName = basename($_FILES['xmlFile']['name']);
 
-    // Cargar el contenido del XML
     $xmlContent = file_get_contents($xmlFilePath);
     if ($xmlContent === false) {
         throw new Exception('No se pudo leer el archivo XML.');
     }
 
-    // Desactivar errores de libxml para manejarlos manualmente
     libxml_use_internal_errors(true);
     $xml = simplexml_load_string($xmlContent);
     if ($xml === false) {
         $errors = libxml_get_errors();
         libxml_clear_errors();
-        throw new Exception('XML mal formado. Errores: ' . json_encode($errors));
+        throw new Exception('XML mal formado.');
     }
 
     // --- 3. EXTRACCIÓN Y PARSEO DE DATOS ---
-
     $reportData = [];
     $unitNumber = 'N/D';
-    // $rawDateStr se definirá dentro de los 'if'
 
-    // Mapa de nombres de reporte (del TXT) a nombres de columnas en la BD
+    // Mapa de nombres BD
     $dbColumnMap = [
         "KM Recorrido" => "km_recorrido",
         "Distancia conducida" => "distancia_conducida",
@@ -147,7 +127,7 @@ try {
         "Combustible PTO" => "combustible_pto",
     ];
     
-    // Nombres de las etiquetas en los XML
+    // Mapeo XML
     $mapping = [
         "KM Recorrido" => ["Cummins" => "Trip Distance", "Detroit" => "Trip Distance"],
         "Distancia conducida" => ["Cummins" => "Drive Distance", "Detroit" => "Drive Distance"],
@@ -176,13 +156,11 @@ try {
         "Combustible PTO" => ["Cummins" => "Total PTO Fuel Used", "Detroit" => "VSG (PTO) Fuel"],
     ];
 
-    // Detectar tipo de archivo
+    // Detectar tipo de archivo y extraer datos
     if (isset($xml->TripInfoParameters)) {
-        // --- TIPO CUMMINS ---
+        // --- CUMMINS ---
         $unitNumber = (string) $xml->DeviceInfo['UnitNumber'];
-        $rawDateStr = (string) $xml->DeviceInfo['ReportDate']; // ej. "13/11/2025 02:10:39 p. m."
-
-        // Parsear fecha de CUMMINS (d/m/Y h:i:s A)
+        $rawDateStr = (string) $xml->DeviceInfo['ReportDate'];
         $parsedDateTime = parseAndFormatDateTime($rawDateStr, 'd/m/Y h:i:s A');
         $reportData['report_date'] = $parsedDateTime['date'];
         $reportData['report_time'] = $parsedDateTime['time'];
@@ -190,28 +168,21 @@ try {
         foreach ($mapping as $nombreReporte => $tags) {
             $tagName = $tags["Cummins"];
             $value = 'N/D';
-            
             if ($tagName === "Overspeed 1/2 Time") {
-                // Caso especial: Sumar Overspeed 1 y 2
                 $time1 = (float) $xml->TripInfoParameters->xpath("//TripInfo[@Name='Overspeed 1 Time']/@Value")[0];
                 $time2 = (float) $xml->TripInfoParameters->xpath("//TripInfo[@Name='Overspeed 2 Time']/@Value")[0];
                 $value = $time1 + $time2;
             } else {
                 $nodes = $xml->TripInfoParameters->xpath("//TripInfo[@Name='{$tagName}']/@Value");
-                if (!empty($nodes)) {
-                    $value = (string) $nodes[0];
-                }
+                if (!empty($nodes)) $value = (string) $nodes[0];
             }
-            $dbColumn = $dbColumnMap[$nombreReporte];
-            $reportData[$dbColumn] = $value;
+            $reportData[$dbColumnMap[$nombreReporte]] = $value;
         }
 
     } elseif (isset($xml->DataFile->TripActivity)) {
-        // --- TIPO DETROIT ---
+        // --- DETROIT ---
         $unitNumber = (string) $xml->DataFile['VehicleID'];
-        $rawDateStr = (string) $xml->DataFile['PC_Date']; // ej. "10/28/2025 13:08:24"
-
-        // Parsear fecha de DETROIT (m/d/Y H:i:s)
+        $rawDateStr = (string) $xml->DataFile['PC_Date'];
         $parsedDateTime = parseAndFormatDateTime($rawDateStr, 'm/d/Y H:i:s');
         $reportData['report_date'] = $parsedDateTime['date'];
         $reportData['report_time'] = $parsedDateTime['time'];
@@ -219,13 +190,11 @@ try {
         foreach ($mapping as $nombreReporte => $tags) {
             $tagName = $tags["Detroit"];
             $value = 'N/D';
-
             if ($tagName === "Over Speed A/B Time") {
                 $timeA = (float) $xml->DataFile->TripActivity->xpath("//Parameter[@Name='Over Speed A Time']")[0];
                 $timeB = (float) $xml->DataFile->TripActivity->xpath("//Parameter[@Name='Over Speed B Time']")[0];
                 $value = $timeA + $timeB;
             } elseif (strpos($tagName, " / ") !== false) {
-                // Caso especial: "Brake Count / Firm brake count"
                 $parts = explode(" / ", $tagName);
                 $nodes1 = $xml->DataFile->TripActivity->xpath("//Parameter[@Name='{$parts[0]}']");
                 $nodes2 = $xml->DataFile->TripActivity->xpath("//Parameter[@Name='{$parts[1]}']");
@@ -234,61 +203,113 @@ try {
                 $value = $val1 + $val2;
             } elseif ($tagName === "Trip Def H / Def Fuel") {
                 $nodes1 = $xml->DataFile->TripActivity->xpath("//Parameter[@Name='Trip Def H']");
-                $nodes2 = $xml->DataFile->TripActivity->xpath("//Parameter[@Name='Def Fuel']"); // Asumiendo este nombre
+                $nodes2 = $xml->DataFile->TripActivity->xpath("//Parameter[@Name='Def Fuel']");
                 $val1 = !empty($nodes1) ? (float)$nodes1[0] : 0;
                 $val2 = !empty($nodes2) ? (float)$nodes2[0] : 0;
                 $value = $val1 + $val2;
             } else {
                 $nodes = $xml->DataFile->TripActivity->xpath("//Parameter[@Name='{$tagName}']");
-                if (!empty($nodes)) {
-                    $value = (string) $nodes[0];
-                }
+                if (!empty($nodes)) $value = (string) $nodes[0];
             }
-            $dbColumn = $dbColumnMap[$nombreReporte];
-            $reportData[$dbColumn] = $value;
+            $reportData[$dbColumnMap[$nombreReporte]] = $value;
         }
     } else {
-        throw new Exception('Formato de XML no reconocido.');
+        throw new Exception('Formato de XML no reconocido (ni Cummins ni Detroit).');
     }
 
     // --- 4. LIMPIEZA DE DATOS (UNIDAD) ---
-
-    // Limpiar número de unidad
     $cleanedUnitNumber = str_replace('#', '', $unitNumber);
-    
-    // --- (La lógica de parseDateTime anterior fue movida hacia arriba) ---
+    $cleanedUnitNumber = trim($cleanedUnitNumber); // Limpieza adicional de espacios
+
+    // LOGICA NUEVA: Si la unidad viene vacía o es N/D, la marcamos como PENDIENTE
+    if (empty($cleanedUnitNumber) || $cleanedUnitNumber === 'N/D') {
+        $cleanedUnitNumber = 'PENDIENTE';
+    }
+
+    // =========================================================================
+    // =============== ZONA DE CANDADOS DE SEGURIDAD ===========================
+    // =========================================================================
+
+    // Candado 1: Validación de FECHAS FUTURAS
+    // ----------------------------------------
+    if ($reportData['report_date'] !== 'N/D') {
+        $reportDateObj = DateTime::createFromFormat('m/d/Y', $reportData['report_date']);
+        $now = new DateTime();
+        // Le damos 1 día de margen por diferencias horarias, pero no más.
+        $futureLimit = (clone $now)->modify('+1 day');
+
+        if ($reportDateObj && $reportDateObj > $futureLimit) {
+            throw new Exception("ERROR DE SEGURIDAD: La fecha del reporte (" . $reportData['report_date'] . ") está en el futuro. Verifique la fecha en la computadora del camión.");
+        }
+    } else {
+        throw new Exception("ERROR: No se pudo determinar la fecha del reporte en el archivo XML.");
+    }
+
+    // Candado 2: Validación de DUPLICADOS
+    // -----------------------------------
+    // Verificamos si ya existe un registro idéntico (Misma Unidad, Fecha y Hora) en la base de datos actual.
+    // Esto aplica INCLUSO si es "PENDIENTE", para no llenar la BD de basura duplicada.
+    $dupSql = "SELECT id FROM trip_reports WHERE unit_number = ? AND report_date = ? AND report_time = ? LIMIT 1";
+    $dupStmt = $conn->prepare($dupSql);
+    if ($dupStmt) {
+        $dupStmt->bind_param("sss", $cleanedUnitNumber, $reportData['report_date'], $reportData['report_time']);
+        $dupStmt->execute();
+        $dupStmt->store_result();
+        if ($dupStmt->num_rows > 0) {
+            $dupStmt->close();
+            throw new Exception("DUPLICADO DETECTADO: Ya existe un reporte cargado para la unidad $cleanedUnitNumber con fecha " . $reportData['report_date'] . " a las " . $reportData['report_time']);
+        }
+        $dupStmt->close();
+    }
+
+    // Candado 3: Validación de EXISTENCIA DE UNIDAD (MODIFICADO)
+    // ---------------------------------------------
+    // SOLO validamos si la unidad NO es "PENDIENTE".
+    // Si es "PENDIENTE", la dejamos pasar para que la corrijan después.
+    if ($cleanedUnitNumber !== 'PENDIENTE') {
+        $unitCheckSql = "SELECT id FROM grupoam6_diesel.units WHERE unit_number = ? LIMIT 1";
+        $unitCheckStmt = $conn->prepare($unitCheckSql);
+        if ($unitCheckStmt) {
+            $unitCheckStmt->bind_param("s", $cleanedUnitNumber);
+            $unitCheckStmt->execute();
+            $unitCheckStmt->store_result();
+            if ($unitCheckStmt->num_rows === 0) {
+                $unitCheckStmt->close();
+                throw new Exception("UNIDAD DESCONOCIDA: La unidad '$cleanedUnitNumber' no está registrada en el sistema (Catálogo de Unidades). Por favor verifique el archivo o registre la unidad primero.");
+            }
+            $unitCheckStmt->close();
+        } else {
+            // Si falla la preparación, puede ser por permisos. 
+            throw new Exception("Error al verificar catálogo de unidades. Posible error de permisos o conexión cruzada.");
+        }
+    }
+
+    // =========================================================================
+    // ======================== FIN DE CANDADOS ================================
+    // =========================================================================
+
 
     // --- 5. INSERCIÓN EN BASE DE DATOS ---
 
-    // Añadir los campos que faltan
     $reportData['file_name'] = $fileName;
     $reportData['unit_number'] = $cleanedUnitNumber;
 
-    // Construir la consulta de inserción
     $columns = implode(", ", array_keys($reportData));
-    
-    // Crear los placeholders (?)
     $placeholders = implode(", ", array_fill(0, count($reportData), "?"));
-    
-    // Obtener los tipos de datos (s = string)
     $types = str_repeat("s", count($reportData));
-    
-    // Obtener los valores
     $values = array_values($reportData);
 
     $sql = "INSERT INTO trip_reports ($columns) VALUES ($placeholders)";
     
     $stmt = $conn->prepare($sql);
     if ($stmt === false) {
-        throw new Exception("Error al preparar la consulta: " . $conn->error, 5);
+        throw new Exception("Error al preparar la consulta de inserción: " . $conn->error, 5);
     }
     
-    // Vincular parámetros
     $stmt->bind_param($types, ...$values);
     
-    // Ejecutar la consulta
     if (!$stmt->execute()) {
-        throw new Exception("Error al ejecutar la consulta: " . $stmt->error, 6);
+        throw new Exception("Error al ejecutar la inserción: " . $stmt->error, 6);
     }
 
     $stmt->close();
@@ -296,16 +317,17 @@ try {
 
     // --- 6. RESPUESTA DE ÉXITO ---
     $response['status'] = 'success';
-    $response['message'] = 'Archivo "' . htmlspecialchars($fileName) . '" procesado y guardado correctamente.';
+    $msgUnidad = ($cleanedUnitNumber === 'PENDIENTE') ? 'PENDIENTE DE ASIGNAR' : $cleanedUnitNumber;
+    $response['message'] = 'Éxito: Reporte cargado. Unidad: ' . $msgUnidad . ' (' . $reportData['report_date'] . ').';
     echo json_encode($response);
 
 } catch (Exception $e) {
     // --- MANEJO DE ERRORES ---
-    http_response_code(500); // Internal Server Error
+    http_response_code(500); 
     $response['status'] = 'error';
-    $response['message'] = 'Error del servidor PHP: ' . $e->getMessage();
-    $response['file'] = $e->getFile();
-    $response['line'] = $e->getLine();
+    $response['message'] = $e->getMessage(); // Mensaje limpio para el usuario
+    $response['debug_file'] = basename($e->getFile());
+    $response['debug_line'] = $e->getLine();
     echo json_encode($response);
 }
 ?>
