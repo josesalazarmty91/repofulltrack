@@ -6,27 +6,16 @@ header('Content-Type: application/json');
 
 $response = [];
 
-// --- INICIO DE NUEVA FUNCIÓN DE AYUDA ---
-/**
- * Parsea una cadena de fecha/hora dado un formato de entrada específico.
- * Devuelve un array con la fecha (formato m/d/Y para BD) y la hora (formato H:i:s).
- */
+// --- FUNCIÓN DE AYUDA PARA FECHAS ---
 function parseAndFormatDateTime($dateString, $inputFormat) {
     $date = 'N/D';
     $time = 'N/D';
-
-    // 1. Limpiar espacios y normalizar AM/PM
     $dateString = trim($dateString);
     $dateString = preg_replace('/\s+/', ' ', $dateString);
     $dateStringAmPm = str_replace(['a. m.', 'p. m.'], ['AM', 'PM'], $dateString);
-
-    // 2. Determinar qué cadena usar
     $stringToParse = (strpos($inputFormat, 'A') !== false) ? $dateStringAmPm : $dateString;
-
-    // 3. Crear el objeto DateTime
     $dateTime = DateTime::createFromFormat($inputFormat, $stringToParse);
     
-    // 4. Intentar formato alternativo si falla
     if ($dateTime === false) {
         $altFormat = '';
         if (strpos($inputFormat, 'h:i:s A') !== false) {
@@ -36,69 +25,52 @@ function parseAndFormatDateTime($dateString, $inputFormat) {
             $altFormat = str_replace('H:i:s', 'h:i:s A', $inputFormat);
             $stringToParse = $dateStringAmPm; 
         }
-        
         if ($altFormat) {
             $dateTime = DateTime::createFromFormat($altFormat, $stringToParse);
         }
     }
-
     if ($dateTime) {
-        // 5. ÉXITO: Formatear para la BD (m/d/Y para compatibilidad)
         $date = $dateTime->format('m/d/Y'); 
         $time = $dateTime->format('H:i:s'); 
     }
-    
     return ['date' => $date, 'time' => $time];
 }
-// --- FIN DE NUEVA FUNCIÓN DE AYUDA ---
-
 
 try {
-    // --- 1. CONFIGURACIÓN Y CONEXIÓN A BD ---
+    // --- 1. CONFIGURACIÓN ---
     $configFile = __DIR__ . '/db_config.php';
-
-    if (!file_exists($configFile) || !is_readable($configFile)) {
-        throw new Exception("El archivo 'db_config.php' no existe o no se pudo leer.", 1);
-    }
-    
+    if (!file_exists($configFile) || !is_readable($configFile)) throw new Exception("Error config BD.", 1);
     require $configFile;
-
+    
     if (!isset($DB_HOST) || !isset($DB_USER) || !isset($DB_PASS) || !isset($DB_NAME)) {
         throw new Exception("Variables de configuración BD no definidas.", 2);
     }
 
     $conn = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME);
-    if ($conn->connect_error) {
-        throw new Exception("Error de conexión a la BD: " . $conn->connect_error, 3);
-    }
+    if ($conn->connect_error) throw new Exception("Error conexión BD: " . $conn->connect_error, 3);
     $conn->set_charset('utf8mb4');
 
-    // --- 2. VALIDACIÓN DEL ARCHIVO SUBIDO ---
+    // --- 2. VALIDACIÓN ARCHIVO ---
     if (!isset($_FILES['xmlFile']) || $_FILES['xmlFile']['error'] !== UPLOAD_ERR_OK) {
-        throw new Exception('Error al subir el archivo. Código: ' . $_FILES['xmlFile']['error']);
+        throw new Exception('Error al subir archivo.');
     }
-
     $xmlFilePath = $_FILES['xmlFile']['tmp_name'];
     $fileName = basename($_FILES['xmlFile']['name']);
-
     $xmlContent = file_get_contents($xmlFilePath);
-    if ($xmlContent === false) {
-        throw new Exception('No se pudo leer el archivo XML.');
-    }
+    if ($xmlContent === false) throw new Exception('No se pudo leer XML.');
 
     libxml_use_internal_errors(true);
     $xml = simplexml_load_string($xmlContent);
     if ($xml === false) {
-        $errors = libxml_get_errors();
         libxml_clear_errors();
         throw new Exception('XML mal formado.');
     }
 
-    // --- 3. EXTRACCIÓN Y PARSEO DE DATOS ---
+    // --- 3. EXTRACCIÓN DATOS ---
     $reportData = [];
     $unitNumber = 'N/D';
 
-    // Mapa de nombres BD
+    // Mapa de Columnas BD
     $dbColumnMap = [
         "KM Recorrido" => "km_recorrido",
         "Distancia conducida" => "distancia_conducida",
@@ -125,6 +97,8 @@ try {
         "Tiempo en neutro/coasting" => "tiempo_neutro_coasting",
         "Tiempo en PTO" => "tiempo_pto",
         "Combustible PTO" => "combustible_pto",
+        "KM HUBODOMETRO" => "km_hubodometro",
+        "Travesia KM" => "travesia_km" // <--- NUEVA COLUMNA
     ];
     
     // Mapeo XML
@@ -154,11 +128,13 @@ try {
         "Tiempo en neutro/coasting" => ["Cummins" => "Coast Time", "Detroit" => "Coast Time"],
         "Tiempo en PTO" => ["Cummins" => "Total PTO Time", "Detroit" => "VSG (PTO) Time"],
         "Combustible PTO" => ["Cummins" => "Total PTO Fuel Used", "Detroit" => "VSG (PTO) Fuel"],
+        "KM HUBODOMETRO" => ["Cummins" => "Total Engine Distance", "Detroit" => "Total Distance"],
+        // AQUI ESTA LA NUEVA COLUMNA (Mismo mapeo que Hubodómetro según indicación)
+        "Travesia KM" => ["Cummins" => "Total Engine Distance", "Detroit" => "Total Distance"]
     ];
 
-    // Detectar tipo de archivo y extraer datos
     if (isset($xml->TripInfoParameters)) {
-        // --- CUMMINS ---
+        // --- CUMMINS (TripInfo) ---
         $unitNumber = (string) $xml->DeviceInfo['UnitNumber'];
         $rawDateStr = (string) $xml->DeviceInfo['ReportDate'];
         $parsedDateTime = parseAndFormatDateTime($rawDateStr, 'd/m/Y h:i:s A');
@@ -168,6 +144,7 @@ try {
         foreach ($mapping as $nombreReporte => $tags) {
             $tagName = $tags["Cummins"];
             $value = 'N/D';
+            
             if ($tagName === "Overspeed 1/2 Time") {
                 $time1 = (float) $xml->TripInfoParameters->xpath("//TripInfo[@Name='Overspeed 1 Time']/@Value")[0];
                 $time2 = (float) $xml->TripInfoParameters->xpath("//TripInfo[@Name='Overspeed 2 Time']/@Value")[0];
@@ -180,7 +157,7 @@ try {
         }
 
     } elseif (isset($xml->DataFile->TripActivity)) {
-        // --- DETROIT ---
+        // --- DETROIT (Parameter) ---
         $unitNumber = (string) $xml->DataFile['VehicleID'];
         $rawDateStr = (string) $xml->DataFile['PC_Date'];
         $parsedDateTime = parseAndFormatDateTime($rawDateStr, 'm/d/Y H:i:s');
@@ -190,6 +167,7 @@ try {
         foreach ($mapping as $nombreReporte => $tags) {
             $tagName = $tags["Detroit"];
             $value = 'N/D';
+
             if ($tagName === "Over Speed A/B Time") {
                 $timeA = (float) $xml->DataFile->TripActivity->xpath("//Parameter[@Name='Over Speed A Time']")[0];
                 $timeB = (float) $xml->DataFile->TripActivity->xpath("//Parameter[@Name='Over Speed B Time']")[0];
@@ -214,41 +192,28 @@ try {
             $reportData[$dbColumnMap[$nombreReporte]] = $value;
         }
     } else {
-        throw new Exception('Formato de XML no reconocido (ni Cummins ni Detroit).');
+        throw new Exception('Formato de XML no reconocido.');
     }
 
-    // --- 4. LIMPIEZA DE DATOS (UNIDAD) ---
+    // --- 4. LIMPIEZA DE DATOS (UNIDAD) Y CANDADOS ---
     $cleanedUnitNumber = str_replace('#', '', $unitNumber);
-    $cleanedUnitNumber = trim($cleanedUnitNumber); // Limpieza adicional de espacios
+    $cleanedUnitNumber = trim($cleanedUnitNumber);
 
-    // LOGICA NUEVA: Si la unidad viene vacía o es N/D, la marcamos como PENDIENTE
     if (empty($cleanedUnitNumber) || $cleanedUnitNumber === 'N/D') {
         $cleanedUnitNumber = 'PENDIENTE';
     }
 
-    // =========================================================================
-    // =============== ZONA DE CANDADOS DE SEGURIDAD ===========================
-    // =========================================================================
-
-    // Candado 1: Validación de FECHAS FUTURAS
-    // ----------------------------------------
+    // Candado 1: Fechas Futuras
     if ($reportData['report_date'] !== 'N/D') {
         $reportDateObj = DateTime::createFromFormat('m/d/Y', $reportData['report_date']);
         $now = new DateTime();
-        // Le damos 1 día de margen por diferencias horarias, pero no más.
         $futureLimit = (clone $now)->modify('+1 day');
-
         if ($reportDateObj && $reportDateObj > $futureLimit) {
-            throw new Exception("ERROR DE SEGURIDAD: La fecha del reporte (" . $reportData['report_date'] . ") está en el futuro. Verifique la fecha en la computadora del camión.");
+            throw new Exception("ERROR DE SEGURIDAD: La fecha del reporte (" . $reportData['report_date'] . ") está en el futuro.");
         }
-    } else {
-        throw new Exception("ERROR: No se pudo determinar la fecha del reporte en el archivo XML.");
     }
 
-    // Candado 2: Validación de DUPLICADOS
-    // -----------------------------------
-    // Verificamos si ya existe un registro idéntico (Misma Unidad, Fecha y Hora) en la base de datos actual.
-    // Esto aplica INCLUSO si es "PENDIENTE", para no llenar la BD de basura duplicada.
+    // Candado 2: Duplicados
     $dupSql = "SELECT id FROM trip_reports WHERE unit_number = ? AND report_date = ? AND report_time = ? LIMIT 1";
     $dupStmt = $conn->prepare($dupSql);
     if ($dupStmt) {
@@ -257,15 +222,12 @@ try {
         $dupStmt->store_result();
         if ($dupStmt->num_rows > 0) {
             $dupStmt->close();
-            throw new Exception("DUPLICADO DETECTADO: Ya existe un reporte cargado para la unidad $cleanedUnitNumber con fecha " . $reportData['report_date'] . " a las " . $reportData['report_time']);
+            throw new Exception("DUPLICADO DETECTADO: Ya existe este reporte.");
         }
         $dupStmt->close();
     }
 
-    // Candado 3: Validación de EXISTENCIA DE UNIDAD (MODIFICADO)
-    // ---------------------------------------------
-    // SOLO validamos si la unidad NO es "PENDIENTE".
-    // Si es "PENDIENTE", la dejamos pasar para que la corrijan después.
+    // Candado 3: Existencia Unidad
     if ($cleanedUnitNumber !== 'PENDIENTE') {
         $unitCheckSql = "SELECT id FROM grupoam6_diesel.units WHERE unit_number = ? LIMIT 1";
         $unitCheckStmt = $conn->prepare($unitCheckSql);
@@ -275,22 +237,13 @@ try {
             $unitCheckStmt->store_result();
             if ($unitCheckStmt->num_rows === 0) {
                 $unitCheckStmt->close();
-                throw new Exception("UNIDAD DESCONOCIDA: La unidad '$cleanedUnitNumber' no está registrada en el sistema (Catálogo de Unidades). Por favor verifique el archivo o registre la unidad primero.");
+                throw new Exception("UNIDAD DESCONOCIDA: La unidad '$cleanedUnitNumber' no está registrada.");
             }
             $unitCheckStmt->close();
-        } else {
-            // Si falla la preparación, puede ser por permisos. 
-            throw new Exception("Error al verificar catálogo de unidades. Posible error de permisos o conexión cruzada.");
         }
     }
 
-    // =========================================================================
-    // ======================== FIN DE CANDADOS ================================
-    // =========================================================================
-
-
     // --- 5. INSERCIÓN EN BASE DE DATOS ---
-
     $reportData['file_name'] = $fileName;
     $reportData['unit_number'] = $cleanedUnitNumber;
 
@@ -303,13 +256,13 @@ try {
     
     $stmt = $conn->prepare($sql);
     if ($stmt === false) {
-        throw new Exception("Error al preparar la consulta de inserción: " . $conn->error, 5);
+        throw new Exception("Error DB Insert (Verifica columna travesia_km): " . $conn->error);
     }
     
     $stmt->bind_param($types, ...$values);
     
     if (!$stmt->execute()) {
-        throw new Exception("Error al ejecutar la inserción: " . $stmt->error, 6);
+        throw new Exception("Error al ejecutar la inserción: " . $stmt->error);
     }
 
     $stmt->close();
@@ -322,12 +275,9 @@ try {
     echo json_encode($response);
 
 } catch (Exception $e) {
-    // --- MANEJO DE ERRORES ---
     http_response_code(500); 
     $response['status'] = 'error';
-    $response['message'] = $e->getMessage(); // Mensaje limpio para el usuario
-    $response['debug_file'] = basename($e->getFile());
-    $response['debug_line'] = $e->getLine();
+    $response['message'] = $e->getMessage();
     echo json_encode($response);
 }
 ?>

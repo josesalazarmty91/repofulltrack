@@ -1,46 +1,25 @@
 <?php
-// Desactivar errores en la salida final y establecer cabecera JSON
 ini_set('display_errors', 0);
 header('Content-Type: application/json');
 
 $response = [];
 
 try {
-    // Usar __DIR__ para asegurar que la ruta al config es correcta
     $configFile = __DIR__ . '/db_config.php';
-
-    if (!file_exists($configFile) || !is_readable($configFile)) {
-        throw new Exception("El archivo 'db_config.php' no existe, no se pudo leer o no está configurado.", 1);
-    }
-    
+    if (!file_exists($configFile)) throw new Exception("Falta db_config.php");
     require $configFile;
 
-    // Verificar que las variables de configuración realmente se cargaron
-    if (!isset($DB_HOST) || !isset($DB_USER) || !isset($DB_PASS) || !isset($DB_NAME)) {
-        throw new Exception("Las variables de configuración de la base de datos no están definidas en db_config.php.", 2);
-    }
-
-    // Crear conexión (a la BD principal, 'grupoam6_repfull')
     $conn = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME);
-
-    // Verificar conexión
-    if ($conn->connect_error) {
-        throw new Exception("Error de conexión a la BD: " . $conn->connect_error, 3);
-    }
-
+    if ($conn->connect_error) throw new Exception("Error BD: " . $conn->connect_error);
     $conn->set_charset('utf8mb4');
 
-    // --- LÓGICA DE FILTROS (MODIFICADA) ---
-    $month = $_GET['month'] ?? null; // ej. '2025-11'
+    $month = $_GET['month'] ?? null;
     $unit = $_GET['unit'] ?? null;
+    $sortBy = $_GET['sort_by'] ?? 'id';
+    $sortDir = $_GET['sort_dir'] ?? 'DESC';
+    $sortDir = (strtoupper($sortDir) === 'DESC') ? 'DESC' : 'ASC';
 
     $whereClauses = [];
-
-    // El input de fecha HTML envía 'YYYY-MM'.
-    // La BD tiene el formato 'm/d/Y' (VARCHAR).
-    // Usamos STR_TO_DATE para convertir la BD a una fecha real de MySQL
-    // y DATE_FORMAT para formatearla como 'YYYY-MM' y poder comparar.
-    
     if (!empty($month)) {
         $whereClauses[] = "DATE_FORMAT(STR_TO_DATE(report_date, '%m/%d/%Y'), '%Y-%m') = '{$conn->real_escape_string($month)}'";
     }
@@ -48,45 +27,16 @@ try {
         $whereClauses[] = "unit_number LIKE '%{$conn->real_escape_string($unit)}%'";
     }
 
-    // --- LÓGICA DE ORDENAMIENTO (NUEVA) ---
-    $sortBy = $_GET['sort_by'] ?? 'id'; // Default: id
-    $sortDir = $_GET['sort_dir'] ?? 'DESC'; // Default: DESC
-
-    // Sanitizar sortDir para evitar SQL injection (solo permitir ASC o DESC)
-    $sortDir = (strtoupper($sortDir) === 'DESC') ? 'DESC' : 'ASC';
-
-    // Construir la cláusula ORDER BY
-    $orderByClause = " ORDER BY id $sortDir"; // Orden por defecto
-    
+    $orderByClause = " ORDER BY id $sortDir";
     if ($sortBy === 'date') {
-        // Ordenar por fecha (convirtiendo el VARCHAR a fecha)
-        // Usamos CASE para poner los 'N/D' o fechas malas al final
-        $orderByClause = " 
-            ORDER BY 
-                CASE 
-                    WHEN STR_TO_DATE(report_date, '%m/%d/%Y') IS NULL THEN 1 
-                    ELSE 0 
-                END, 
-                STR_TO_DATE(report_date, '%m/%d/%Y') $sortDir, 
-                report_time $sortDir
-        ";
+        $orderByClause = " ORDER BY CASE WHEN STR_TO_DATE(report_date, '%m/%d/%Y') IS NULL THEN 1 ELSE 0 END, STR_TO_DATE(report_date, '%m/%d/%Y') $sortDir, report_time $sortDir";
     }
-    // --- FIN LÓGICA DE ORDENAMIENTO ---
 
-
-    // Consulta SQL base para obtener los reportes
     $sql = "
         SELECT 
-            id,
-            file_name,
-            unit_number,
-            
-            -- Manejar fechas almacenadas como VARCHAR 'm/d/Y' y formatearlas a 'd/m/Y'
-            CASE 
-                WHEN report_date IS NULL OR report_date = 'N/D' OR report_date = '' THEN 'N/D'
-                ELSE DATE_FORMAT(STR_TO_DATE(report_date, '%m/%d/%Y'), '%d/%m/%Y') 
-            END AS report_date,
-            
+            id, file_name, unit_number,
+            CASE WHEN report_date IS NULL OR report_date = 'N/D' THEN 'N/D'
+                 ELSE DATE_FORMAT(STR_TO_DATE(report_date, '%m/%d/%Y'), '%d/%m/%Y') END AS report_date,
             report_time,
             km_recorrido,
             distancia_conducida,
@@ -112,47 +62,27 @@ try {
             eventos_frenado,
             tiempo_neutro_coasting,
             tiempo_pto,
-            combustible_pto
-        FROM 
-            trip_reports
+            combustible_pto,
+            km_hubodometro,
+            travesia_km -- <--- CAMPO NUEVO
+        FROM trip_reports
     ";
 
-    // Añadir los filtros a la consulta si existen
-    if (!empty($whereClauses)) {
-        $sql .= " WHERE " . implode(" AND ", $whereClauses);
-    }
-
-    // CAMBIO: Usar la nueva cláusula de ordenamiento
+    if (!empty($whereClauses)) $sql .= " WHERE " . implode(" AND ", $whereClauses);
     $sql .= $orderByClause;
 
-
     $result = $conn->query($sql);
-
-    if (!$result) {
-        // Error en la consulta SQL
-        throw new Exception("Error en la consulta SQL: " . $conn->error, 4);
-    }
+    if (!$result) throw new Exception("Error SQL: " . $conn->error);
 
     $reports = [];
-    if ($result->num_rows > 0) {
-        // Obtener datos de cada fila
-        while($row = $result->fetch_assoc()) {
-            $reports[] = $row;
-        }
+    while($row = $result->fetch_assoc()) {
+        $reports[] = $row;
     }
-    
-    // Enviar los reportes (incluso si está vacío)
     echo json_encode($reports);
-
     $conn->close();
 
 } catch (Exception $e) {
-    // Si algo falla, enviar un JSON de error claro
-    http_response_code(500); // Internal Server Error
-    $response['status'] = 'error';
-    $response['message'] = 'Error del servidor PHP: ' . $e->getMessage();
-    $response['file'] = $e->getFile();
-    $response['line'] = $e->getLine();
-    echo json_encode($response);
+    http_response_code(500);
+    echo json_encode(['status'=>'error', 'message'=>$e->getMessage()]);
 }
 ?>
